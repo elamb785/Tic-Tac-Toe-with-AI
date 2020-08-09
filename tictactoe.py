@@ -5,12 +5,10 @@
 
 # ISSUES:
 # 1) Code requires running of is_winner twice in the case that game_over returns True (that's a lot of wasted time)
-# 2) Game __init__ is terribly long and there's got to be a shorter way
 
 import random
 
 class Board():
-    # class variables
     
     def __init__(self):
         self.board = {'7': ' ', '8': ' ', '9': ' ',
@@ -64,7 +62,6 @@ class Board():
         return True if self.is_full() or self.is_winner(player) else False
 
 class Player():
-    # class variables
 
     def __init__(self, strategy, token, name):
         self.strategy = strategy
@@ -92,27 +89,10 @@ def User(player, board):
     return move
 
 class Game():
-    # class varaibles
 
     def __init__(self, p1_diff, p2_diff, p1_name, p2_name):
-        if p1_diff == 'Hard':
-            self.p1 = Player(Hard, 'X', p1_name)
-        elif p1_diff == 'Medium':
-            self.p1 = Player(Medium, 'X', p1_name)
-        elif p1_diff == 'Easy':
-            self.p1 = Player(Easy, 'X', p1_name)
-        else:
-            self.p1 = Player(User, 'X', p1_name)
-
-        if p2_diff == 'Hard':
-            self.p2 = Player(Hard, 'O', p2_name)       
-        elif p2_diff == 'Medium':
-            self.p2 = Player(Medium, 'O', p2_name)
-        elif p2_diff == 'Easy':
-            self.p2 = Player(Easy, 'O', p2_name)
-        else:
-            self.p2 = Player(User, 'O', p2_name)
-
+        self.p1 = Player(p1_diff, 'X', p1_name)
+        self.p2 = Player(p2_diff, 'O', p2_name)
         self.board = Board()
 
     def change_turn(self, player):
@@ -120,6 +100,14 @@ class Game():
             return self.p2
         else:
             return self.p1
+
+# Convert inputted strings to function types
+function_mappings = {
+    'Hard': Hard,
+    'Medium': Medium,
+    'Easy': Easy,
+    'User': User
+}
 
 def get_players_diff():
     players = ("User", "Easy", "Medium", "Hard")
@@ -130,7 +118,7 @@ def get_players_diff():
             print("Please enter an acceptable player name.")
             player_diff = input(f"Who is player {i} {players}? ").title()
         player.append(player_diff)
-    return player[0], player[1]
+    return function_mappings[player[0]], function_mappings[player[1]]
 
 def query_new_game():
     ans = input("Do you want to play again? [y/n] ")
@@ -141,7 +129,6 @@ def query_new_game():
 
 def start_game(p1, p2):
     game_going = True
-
     p1_user = input("What is player 1's name? ")
     p2_user = input("What is player 2's name? ")
     game = Game(p1, p2, p1_user, p2_user)
@@ -155,7 +142,6 @@ def start_game(p1, p2):
 
     while game_going:
         move = str(player.make_move(game.board))
-        # Verify that move generation works
         while not game.board.is_open(move):
             print("Position already occupied. Please try again.")
             move = player.make_move(game.board)
@@ -167,12 +153,12 @@ def start_game(p1, p2):
             if game.board.is_winner(player):
                 print(f'{player.name} wins!')
                 game_going = False
-                return query_new_game() # return False if session over 
+                return query_new_game()
             else:
                 if game.board.is_full():
                     print("Tie!")
                     game_going = False
-                    return query_new_game() # return False if session over 
+                    return query_new_game()
         else:
             player = game.change_turn(player)
             print(f'{player.name}\'s Turn')
