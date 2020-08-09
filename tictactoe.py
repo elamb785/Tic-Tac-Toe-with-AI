@@ -6,9 +6,8 @@
 # ISSUES:
 # 1) Code requires running of is_winner twice in the case that game_over returns True (that's a lot of wasted time)
 # 2) Hard difficulty assumes that player1 is hard and player2 is something else (because I 
-# hard coded the scores dictionary)
-# 3) Minimax algorithm does not work--check use of is_winner because I do not think the alg
-# is recognizing the potential for winning for its opponent
+# hard coded the scores dictionary) so that needs to be generalized
+# 3) Code needs refactoring (especially the last few methods in Board())
 
 import random
 from itertools import combinations
@@ -51,6 +50,12 @@ class Board():
         else:
             self.board[move] = ' '
 
+    def update_board_AI(self, move, player):
+        if player:
+            self.board[move] = 'X'
+        else:
+            self.board[move] = 'O'
+
     def is_open(self, move):
         return True if self.board[move] == ' ' else False
 
@@ -71,15 +76,18 @@ class Board():
                         return move_prelim 
         return None
 
-    def is_winner(self, player):
-        '''return whether someone has one. If so, who'''
+    def is_winner(self, game):
+        '''return whether someone has won and if so, who'''
         for i, j, k in self.win_conditions:
-            if self.board[i] == self.board[j] == self.board[k] == player.token:
-                return True, player
-        return False
+            if self.board[i] == self.board[j] == self.board[k] == 'X':
+                return True, game.p1
+            elif self.board[i] == self.board[j] == self.board[k] == 'O':
+                return True, game.p2
+        return False, game.p1
 
-    def game_over(self, player):
-        return True if self.is_full() or self.is_winner(player) else False
+    def game_over(self, game):
+        ans = self.is_winner(game)[0]
+        return True if self.is_full() or ans else False
 
 class Player():
 
@@ -91,30 +99,33 @@ class Player():
     def make_move(self, board, game):
         return self.strategy(self, board, game)
 
-def minimax(board, player, game, depth, isMaximizer):
+def minimax(board, game, depth, isMaximizer):
     '''recursively determine the optimal play for all board positions'''
+
     # base case -- Problem is probably in these base cases
-    if board.game_over(player):
-        if board.is_winner(player): 
-            score = scores[player.token]
+    if board.game_over(game):
+        winner_exists, winner = game.board.is_winner(game)
+        if winner_exists: 
+            score = scores[winner.token]
         else:
             score = scores['Tie']
         return score
 
+
     if isMaximizer:
         bestScore = float("-inf")
         for move in board.open_spaces():
-            board.update_board(move, player)
-            score = minimax(board, game.change_turn(player), game, depth + 1, False)
+            board.update_board_AI(move, isMaximizer) 
+            score = minimax(board, game, depth + 1, False)
             board.update_board(move) # undo the update 
             bestScore = max(score, bestScore)
         return bestScore
     else:
         bestScore = float("inf")
         for move in board.open_spaces():
-            board.update_board(move, player) 
-            score = minimax(board, game.change_turn(player), game, depth + 1, True)
-            board.update_board(move) # undo the update 
+            board.update_board_AI(move, isMaximizer)
+            score = minimax(board, game, depth + 1, True)
+            board.update_board(move) # undo the winning, tying, or losing move
             bestScore = min(score, bestScore)
         return bestScore
 
@@ -127,13 +138,13 @@ def Hard(player, board, game):
     # loop through possible moves given the current board
     for move in board.open_spaces():
         board.update_board(move, player)
-        score = minimax(board, player, game, 0, False) #using True doesn't help
+        #player = game.change_turn(player)
+        score = minimax(board, game, 0, False) 
         board.update_board(move) # undo the update 
         if score > bestScore:
             bestScore = score
             bestMove = move
     return bestMove
-
 
 def Medium(player, board, game):
     '''Win, if possible. If not, block. Else, random.'''
@@ -178,7 +189,7 @@ function_mappings = {
     'User': User
 }
 
-# Assign reward values for minimax
+    # define the scores
 scores = {
     'X': 1,
     'O': -1,
@@ -225,15 +236,14 @@ def start_game(p1, p2):
         game.board.update_board(move, player)
         print(f'{player.name} played at position {move}.')
         game.board.print_board()
-
-        if game.board.game_over(player):
-            if game.board.is_winner(player):
-                print(f'{player.name} wins!')
+        if game.board.game_over(game):
+            winner_exists, winner = game.board.is_winner(game)
+            if winner_exists:
+                print(f'{winner.name} wins!')
                 return query_new_game()
             else:
-                if game.board.is_full():
-                    print("Tie!")
-                    return query_new_game()
+                print("Tie!")
+                return query_new_game()
         else:
             player = game.change_turn(player)
             print(f'{player.name}\'s Turn')
