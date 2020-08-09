@@ -5,6 +5,10 @@
 
 # ISSUES:
 # 1) Code requires running of is_winner twice in the case that game_over returns True (that's a lot of wasted time)
+# 2) Hard difficulty assumes that player1 is hard and player2 is something else (because I 
+# hard coded the scores dictionary)
+# 3) Minimax algorithm does not work--check use of is_winner because I do not think the alg
+# is recognizing the potential for winning for its opponent
 
 import random
 from itertools import combinations
@@ -41,8 +45,11 @@ class Board():
         print(f'| {self.board["1"]} | {self.board["2"]} | {self.board["3"]} |')
         print("------------")
 
-    def update_board(self, move, player):
-        self.board[move] = player.token
+    def update_board(self, move, player=None):
+        if player:
+            self.board[move] = player.token 
+        else:
+            self.board[move] = ' '
 
     def is_open(self, move):
         return True if self.board[move] == ' ' else False
@@ -68,7 +75,7 @@ class Board():
         '''return whether someone has one. If so, who'''
         for i, j, k in self.win_conditions:
             if self.board[i] == self.board[j] == self.board[k] == player.token:
-                return True, player.name
+                return True, player
         return False
 
     def game_over(self, player):
@@ -84,10 +91,49 @@ class Player():
     def make_move(self, board, game):
         return self.strategy(self, board, game)
 
+def minimax(board, player, game, depth, isMaximizer):
+    '''recursively determine the optimal play for all board positions'''
+    # base case -- Problem is probably in these base cases
+    if board.game_over(player):
+        if board.is_winner(player): 
+            score = scores[player.token]
+        else:
+            score = scores['Tie']
+        return score
+
+    if isMaximizer:
+        bestScore = float("-inf")
+        for move in board.open_spaces():
+            board.update_board(move, player)
+            score = minimax(board, game.change_turn(player), game, depth + 1, False)
+            board.update_board(move) # undo the update 
+            bestScore = max(score, bestScore)
+        return bestScore
+    else:
+        bestScore = float("inf")
+        for move in board.open_spaces():
+            board.update_board(move, player) 
+            score = minimax(board, game.change_turn(player), game, depth + 1, True)
+            board.update_board(move) # undo the update 
+            bestScore = min(score, bestScore)
+        return bestScore
+
 # Define the possible strategies for make_move method
-def Hard(player, board):
-    '''minmax algorithm'''
-    pass
+
+def Hard(player, board, game):
+    '''best move is determined using the minimax algorithm'''
+    bestScore = float("-inf")
+    bestMove = None
+    # loop through possible moves given the current board
+    for move in board.open_spaces():
+        board.update_board(move, player)
+        score = minimax(board, player, game, 0, False) #using True doesn't help
+        board.update_board(move) # undo the update 
+        if score > bestScore:
+            bestScore = score
+            bestMove = move
+    return bestMove
+
 
 def Medium(player, board, game):
     '''Win, if possible. If not, block. Else, random.'''
@@ -130,6 +176,13 @@ function_mappings = {
     'Medium': Medium,
     'Easy': Easy,
     'User': User
+}
+
+# Assign reward values for minimax
+scores = {
+    'X': 1,
+    'O': -1,
+    'Tie': 0
 }
 
 def get_players_diff():
