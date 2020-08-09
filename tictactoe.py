@@ -5,8 +5,7 @@
 
 # ISSUES:
 # 1) Code requires running of is_winner twice in the case that game_over returns True (that's a lot of wasted time)
-# 2) When I do User/Easy or Easy/User the second player gets the same strategy as the first!
-# 3) Game __init__ is terribly long and there's got to be a shorter way
+# 2) Game __init__ is terribly long and there's got to be a shorter way
 
 import random
 
@@ -17,6 +16,9 @@ class Board():
         self.board = {'7': ' ', '8': ' ', '9': ' ',
             '4': ' ', '5': ' ', '6': ' ',
             '1': ' ', '2': ' ', '3': ' '}
+
+    def get_keys(self):
+        return self.board.keys()
 
     def print_board(self):
         print("------------")
@@ -84,16 +86,7 @@ def Easy(player, board):
 
 def User(player, board):
     move = input("Insert move (1-9): ")
-    while True:
-        try:
-            int(move)
-        except ValueError:
-            print("Input must be a number. Please try again.")
-            move = input("Insert move (1-9): ")
-        else:
-            break
-    while int(move) not in list(range(1, 10)):
-    # OR while move not in board.keys()
+    while move not in board.get_keys():
         print("Please enter a value between 1 and 9")
         move = input("Insert move (1-9): ")
     return move
