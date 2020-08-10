@@ -1,6 +1,8 @@
 # Tic-Tac-Toe-with-AI
 Play Tic-Tac-Toe with friends or against the AI!
 
+# Demo
+![](code-demos/tictactoe.gif)
 
 # Features
 1) Locations are marked as if it were a numerical keypad for intutive use.
