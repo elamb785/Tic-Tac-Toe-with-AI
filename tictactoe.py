@@ -8,6 +8,8 @@
 # 2) Hard difficulty assumes that player1 is hard and player2 is something else (because I 
 # hard coded the scores dictionary) so that needs to be generalized
 # 3) Code needs refactoring (especially the last few methods in Board())
+# 4) When doing hard vs easy, if the move order is 7, 9, 4, 2 the AI doesn't win with
+# 1 but rather prolongs the game by playing at 5. This doesn't happen when playing as user, medium.
 
 import random
 from itertools import combinations
@@ -38,23 +40,22 @@ class Board():
     def print_board(self):
         print("------------")
         print(f'| {self.board["7"]} | {self.board["8"]} | {self.board["9"]} |')
-        print("------------")
+        print("-------------")
         print(f'| {self.board["4"]} | {self.board["5"]} | {self.board["6"]} |')
-        print("------------")
+        print("-------------")
         print(f'| {self.board["1"]} | {self.board["2"]} | {self.board["3"]} |')
-        print("------------")
+        print("-------------")
 
-    def update_board(self, move, player=None):
-        if player:
-            self.board[move] = player.token 
+    def update_board(self, move, player=None, isMaximizing=None):
+        if isMaximizing != None and player == None:
+            if isMaximizing:
+                self.board[move] = 'X'
+            else:
+                self.board[move] = 'O'
+        elif player and isMaximizing == None:
+            self.board[move] = player.token
         else:
             self.board[move] = ' '
-
-    def update_board_AI(self, move, player):
-        if player:
-            self.board[move] = 'X'
-        else:
-            self.board[move] = 'O'
 
     def is_open(self, move):
         return True if self.board[move] == ' ' else False
@@ -106,7 +107,10 @@ def minimax(board, game, depth, isMaximizer):
     if board.game_over(game):
         winner_exists, winner = game.board.is_winner(game)
         if winner_exists: 
-            score = scores[winner.token]
+            if winner.token == 'X':
+                score = scores['X'] - depth
+            else:
+                score = scores['O'] + depth
         else:
             score = scores['Tie']
         return score
@@ -115,7 +119,7 @@ def minimax(board, game, depth, isMaximizer):
     if isMaximizer:
         bestScore = float("-inf")
         for move in board.open_spaces():
-            board.update_board_AI(move, isMaximizer) 
+            board.update_board(move, isMaximizing=isMaximizer) 
             score = minimax(board, game, depth + 1, False)
             board.update_board(move) # undo the update 
             bestScore = max(score, bestScore)
@@ -123,7 +127,7 @@ def minimax(board, game, depth, isMaximizer):
     else:
         bestScore = float("inf")
         for move in board.open_spaces():
-            board.update_board_AI(move, isMaximizer)
+            board.update_board(move, isMaximizing=isMaximizer)
             score = minimax(board, game, depth + 1, True)
             board.update_board(move) # undo the winning, tying, or losing move
             bestScore = min(score, bestScore)
@@ -137,7 +141,7 @@ def Hard(player, board, game):
     bestMove = None
     # loop through possible moves given the current board
     for move in board.open_spaces():
-        board.update_board(move, player)
+        board.update_board(move, player=player)
         #player = game.change_turn(player)
         score = minimax(board, game, 0, False) 
         board.update_board(move) # undo the update 
@@ -191,8 +195,8 @@ function_mappings = {
 
     # define the scores
 scores = {
-    'X': 1,
-    'O': -1,
+    'X': 10,
+    'O': -10,
     'Tie': 0
 }
 
@@ -233,8 +237,8 @@ def start_game(p1, p2):
         while not game.board.is_open(move):
             print("Position already occupied. Please try again.")
             move = player.make_move(game.board, game)
-        game.board.update_board(move, player)
-        print(f'{player.name} played at position {move}.')
+        game.board.update_board(move, player=player)
+        print(f'Last Move: {player.name} played at position {move}.')
         game.board.print_board()
         if game.board.game_over(game):
             winner_exists, winner = game.board.is_winner(game)
