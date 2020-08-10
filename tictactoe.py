@@ -1,13 +1,8 @@
 # TIC TAC TOE with AI
 # Written By: Evan Lamb
-# Date Written: 8/8/2020
-# Create a Tic Tac Toe game with 3 levels of difficulty
-
-# ISSUES:
-# 1) Hard difficulty assumes that player1 is hard and player2 is something else (because I 
-# hard coded the scores dictionary) so that needs to be generalized
-# 2) When doing hard vs easy, if the move order is 7, 9, 4, 2 the AI doesn't win with
-# 1 but rather prolongs the game by playing at 5. Unable to reproduce since refactoring update_board.
+# Date Written: 8/8/2020 - 8/10/20
+# Create a Tic Tac Toe game with 3 levels of AI difficulty, and 4 game modes
+# human vs AI, AI vs human, human vs human, and AI vs AI
 
 import random
 from itertools import combinations
@@ -44,14 +39,17 @@ class Board():
         print(f'| {self.board["1"]} | {self.board["2"]} | {self.board["3"]} |')
         print("-------------")
 
-    def update_board(self, move, player=None, isMaximizing=None):
+    def update_board(self, move, flag, player=None, isMaximizing=None):
+        # for use in simulated games
         if isMaximizing != None and player == None:
-            if isMaximizing:
-                self.board[move] = 'X'
+            if flag == 1:
+                self.board[move] = 'X' if isMaximizing else 'O'
             else:
-                self.board[move] = 'O'
+                self.board[move] = 'O' if isMaximizing else 'X'
+        # for use in real game
         elif player and isMaximizing == None:
             self.board[move] = player.token
+        # for use in simulated games
         else:
             self.board[move] = ' '
 
@@ -59,8 +57,7 @@ class Board():
         return True if self.board[move] == ' ' else False
 
     def open_spaces(self):
-        options = [k for k,v in self.board.items() if v == ' ']
-        return options
+        return [k for k,v in self.board.items() if v == ' ']
 
     def is_full(self):
         return True if set(self.board.values()) == {'X', 'O'} else False
@@ -85,92 +82,103 @@ class Board():
         return False, 'No winner'
 
     def game_over(self, game): 
-        '''returns game_over, is_winner, who_won'''
+        '''returns bool game_over, bool is_winner, obj who_won'''
         results = self.is_winner(game)
         full = self.is_full()
         # Case 1: Game over
         if full or results[0] == True:
            return True, results[0], results[1]
-        # Case 3: Game not over
+        # Case 2: Game not over
         else:
             return False, False, 'No winner'
 
 class Player():
 
-    def __init__(self, strategy, token, name):
+    def __init__(self, strategy, token, name, scores):
         self.strategy = strategy
         self.token = token
         self.name = name
+        self.scores = scores
 
-    def make_move(self, board, game):
-        return self.strategy(self, board, game)
+    def make_move(self, game):
+        return self.strategy(self, game)
 
-def minimax(board, game, depth, isMaximizer):
+def minimax(game, depth, isMaximizer, flag):
     '''recursively determine the optimal play for all board positions'''
-    game_complete, is_winner, who_won = board.game_over(game)
+    # flag = 1, player1 is using minimax in real game
+    # flag = 2, player2 is using minimax in real game
+
     # base case
+    game_complete, is_winner, who_won = game.board.game_over(game)
     if game_complete:
         if is_winner: 
-            if who_won.token == 'X':
-                score = scores['X'] - depth
+            if who_won.token == 'X' and flag == 1:
+                score = game.p1.scores['X'] - depth
+            elif who_won.token == 'O' and flag == 1:
+                score = game.p1.scores['O'] + depth
+            elif who_won.token == 'X' and flag == 2:
+                score = game.p2.scores['X'] + depth
             else:
-                score = scores['O'] + depth
+                score = game.p2.scores['O'] - depth
         else:
-            score = scores['Tie']
+            score = game.p1.scores['Tie']
         return score
 
     if isMaximizer:
         bestScore = float("-inf")
-        for move in board.open_spaces():
-            board.update_board(move, isMaximizing=isMaximizer) 
-            score = minimax(board, game, depth + 1, False)
-            board.update_board(move) # undo the update 
+        for move in game.board.open_spaces():
+            game.board.update_board(move, flag, isMaximizing=isMaximizer) 
+            score = minimax(game, depth + 1, False, flag)
+            # undo the winning, tying, or losing move
+            game.board.update_board(move, None)  
             bestScore = max(score, bestScore)
         return bestScore
     else:
         bestScore = float("inf")
-        for move in board.open_spaces():
-            board.update_board(move, isMaximizing=isMaximizer)
-            score = minimax(board, game, depth + 1, True)
-            board.update_board(move) # undo the winning, tying, or losing move
+        for move in game.board.open_spaces():
+            game.board.update_board(move, flag, isMaximizing=isMaximizer)
+            score = minimax(game, depth + 1, True, flag)
+            # undo the winning, tying, or losing move
+            game.board.update_board(move, None) 
             bestScore = min(score, bestScore)
         return bestScore
 
 # Define the possible strategies for make_move method
 
-def Hard(player, board, game):
+def Hard(player, game):
     '''Best move is determined using the minimax algorithm'''
+    # Determine which player is using minimax to make their turn
+    flag = 1 if player.token == 'X' else 2
     bestScore = float("-inf")
     bestMove = None
     # loop through possible moves given the current board
-    for move in board.open_spaces():
-        board.update_board(move, player=player)
-        #player = game.change_turn(player)
-        score = minimax(board, game, 0, False) 
-        board.update_board(move) # undo the update 
+    for move in game.board.open_spaces():
+        game.board.update_board(move, None, player=player)
+        score = minimax(game, 0, False, flag) 
+        game.board.update_board(move, None) # undo the update 
         if score > bestScore:
-            bestScore = score
-            bestMove = move
+                bestScore = score
+                bestMove = move  
     return bestMove
 
-def Medium(player, board, game):
+def Medium(player, game):
     '''Win, if possible. If not, block. Else, random.'''
-    move = board.win_possible(player)
+    move = game.board.win_possible(player)
     if move:
         return move
-    move = board.win_possible(game.change_turn(player))
+    move = game.board.win_possible(game.change_turn(player))
     if move:
         return move
     else:
-        return random.choice(board.open_spaces())
+        return random.choice(game.board.open_spaces())
 
-def Easy(player, board, game=None):
+def Easy(player, game):
     '''Play randomly'''
-    return random.choice(board.open_spaces())
+    return random.choice(game.board.open_spaces())
 
-def User(player, board, game=None):
+def User(player, game):
     move = input("Insert move (1-9): ")
-    while move not in board.get_keys():
+    while move not in game.board.get_keys():
         print("Please enter a value between 1 and 9")
         move = input("Insert move (1-9): ")
     return move
@@ -178,8 +186,8 @@ def User(player, board, game=None):
 class Game():
 
     def __init__(self, p1_diff, p2_diff, p1_name, p2_name):
-        self.p1 = Player(p1_diff, 'X', p1_name)
-        self.p2 = Player(p2_diff, 'O', p2_name)
+        self.p1 = Player(p1_diff, 'X', p1_name, scores1)
+        self.p2 = Player(p2_diff, 'O', p2_name, scores2)
         self.board = Board()
 
     def change_turn(self, player):
@@ -197,9 +205,15 @@ function_mappings = {
 }
 
 # define the rewards/penalties for minimax
-scores = {
+scores1 = {
     'X': 10,
     'O': -10,
+    'Tie': 0
+}
+
+scores2 = {
+    'X': -10,
+    'O': 10,
     'Tie': 0
 }
 
@@ -236,11 +250,11 @@ def start_game(p1, p2):
 
     # initial play begins here
     while True:
-        move = str(player.make_move(game.board, game))
+        move = str(player.make_move(game))
         while not game.board.is_open(move):
             print("Position already occupied. Please try again.")
-            move = player.make_move(game.board, game)
-        game.board.update_board(move, player=player)
+            move = player.make_move(game)
+        game.board.update_board(move, None, player=player)
         print(f'Last Move: {player.name} played at position {move}.')
         game.board.print_board()
         game_complete, is_winner, who_won = game.board.game_over(game)
