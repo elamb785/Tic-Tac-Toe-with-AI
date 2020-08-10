@@ -36,7 +36,8 @@ in a negative reward. Ties result in no reward. This recursion continues until a
 the greatest score. Below is an example of the algorithm at work courtesy of 
 theoryofprogramming.com.
 
-[Minimax Algorithm] https://github.com/elmab785/Tic-Tac-Toe-with-AI?raw=true
+![minimax_alg] (minimax_alg.JPG?raw=true)
+Fig. 1 Minimax Algorithm Search Tree
 
 
 
