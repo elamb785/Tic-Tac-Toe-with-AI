@@ -4,12 +4,10 @@
 # Create a Tic Tac Toe game with 3 levels of difficulty
 
 # ISSUES:
-# 1) Code requires running of is_winner twice in the case that game_over returns True (that's a lot of wasted time)
-# 2) Hard difficulty assumes that player1 is hard and player2 is something else (because I 
+# 1) Hard difficulty assumes that player1 is hard and player2 is something else (because I 
 # hard coded the scores dictionary) so that needs to be generalized
-# 3) Code needs refactoring (especially the last few methods in Board())
-# 4) When doing hard vs easy, if the move order is 7, 9, 4, 2 the AI doesn't win with
-# 1 but rather prolongs the game by playing at 5. This doesn't happen when playing as user, medium.
+# 2) When doing hard vs easy, if the move order is 7, 9, 4, 2 the AI doesn't win with
+# 1 but rather prolongs the game by playing at 5. Unable to reproduce since refactoring update_board.
 
 import random
 from itertools import combinations
@@ -38,7 +36,7 @@ class Board():
         return self.board.keys()
 
     def print_board(self):
-        print("------------")
+        print("-------------")
         print(f'| {self.board["7"]} | {self.board["8"]} | {self.board["9"]} |')
         print("-------------")
         print(f'| {self.board["4"]} | {self.board["5"]} | {self.board["6"]} |')
@@ -84,11 +82,18 @@ class Board():
                 return True, game.p1
             elif self.board[i] == self.board[j] == self.board[k] == 'O':
                 return True, game.p2
-        return False, game.p1
+        return False, 'No winner'
 
-    def game_over(self, game):
-        ans = self.is_winner(game)[0]
-        return True if self.is_full() or ans else False
+    def game_over(self, game): 
+        '''returns game_over, is_winner, who_won'''
+        results = self.is_winner(game)
+        full = self.is_full()
+        # Case 1: Game over
+        if full or results[0] == True:
+           return True, results[0], results[1]
+        # Case 3: Game not over
+        else:
+            return False, False, 'No winner'
 
 class Player():
 
@@ -102,19 +107,17 @@ class Player():
 
 def minimax(board, game, depth, isMaximizer):
     '''recursively determine the optimal play for all board positions'''
-
-    # base case -- Problem is probably in these base cases
-    if board.game_over(game):
-        winner_exists, winner = game.board.is_winner(game)
-        if winner_exists: 
-            if winner.token == 'X':
+    game_complete, is_winner, who_won = board.game_over(game)
+    # base case
+    if game_complete:
+        if is_winner: 
+            if who_won.token == 'X':
                 score = scores['X'] - depth
             else:
                 score = scores['O'] + depth
         else:
             score = scores['Tie']
         return score
-
 
     if isMaximizer:
         bestScore = float("-inf")
@@ -136,7 +139,7 @@ def minimax(board, game, depth, isMaximizer):
 # Define the possible strategies for make_move method
 
 def Hard(player, board, game):
-    '''best move is determined using the minimax algorithm'''
+    '''Best move is determined using the minimax algorithm'''
     bestScore = float("-inf")
     bestMove = None
     # loop through possible moves given the current board
@@ -193,7 +196,7 @@ function_mappings = {
     'User': User
 }
 
-    # define the scores
+# define the rewards/penalties for minimax
 scores = {
     'X': 10,
     'O': -10,
@@ -240,10 +243,10 @@ def start_game(p1, p2):
         game.board.update_board(move, player=player)
         print(f'Last Move: {player.name} played at position {move}.')
         game.board.print_board()
-        if game.board.game_over(game):
-            winner_exists, winner = game.board.is_winner(game)
-            if winner_exists:
-                print(f'{winner.name} wins!')
+        game_complete, is_winner, who_won = game.board.game_over(game)
+        if game_complete:
+            if is_winner:
+                print(f'{who_won.name} wins!')
                 return query_new_game()
             else:
                 print("Tie!")
